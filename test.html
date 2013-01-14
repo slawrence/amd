@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Test Loader</title>
+    <script src="loader.js"></script>
+    <script>
+        //largely from Resig's js ninja book with customizations
+        var results;
+        function assert(value, desc) {
+            var li = document.createElement("li");
+            li.className = value ? "pass" : "fail";
+            li.appendChild(document.createTextNode(desc));
+            results.appendChild(li);
+            if (!value) {
+                li.parentNode.parentNode.className = "fail";
+            }
+            return li;
+        }
+
+        function test(name, fn) {
+            results = document.getElementById("results");
+            results = assert(true, name).appendChild(document.createElement("ul"));
+            fn.call({});
+        };
+
+        window.onload = function () {
+/*
+            test("Exists test", function () {
+                assert(req, "req global exists");
+                assert(define, "define global exists");
+                assert(define.amd, "define.amd exists");
+            });
+
+            test("Define a module with no dependencies", function () {
+                define("module", function () {
+                    console.log('executing module ...');
+                    return {};
+                });
+            });
+
+            test("Define an object module with no dependencies", function () {
+                define("testModule", {
+                    test: 'test string'
+                });
+            });
+
+            test("Define some dependent objects", function () {
+                define("some", ["testModule"], function (testModule) {
+                    console.log('executing some', testModule);
+                    return { hola: 'hola' };
+                });
+                define("nofriends", ["some"], function (testModule) {
+                    console.log('executing nofriends', testModule);
+                });
+            });
+
+            test("Define anonymous module", function () {
+                define(function() { console.log('executing anonymous module')});
+            });
+*/
+            test("Basic Require Tests", function () {
+                req(['a', 'b'], function (a, b) {
+                    assert(a.name === 'a', 'a should equal');
+                    assert(b.name === 'b', 'b should equal');
+                    assert(b.cName === 'c', 'c should equal');
+                });
+            });
+        }
+
+    </script>
+
+    <style>
+        #results li.pass { color: green }
+        #results li.fail { color: red }
+    </style>
+</head>
+    <ul id="results"></ul>
+</html>
