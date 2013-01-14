@@ -143,7 +143,6 @@ var modules = modules || [];
             callback: callback
         };
 
-        //
         // Add to list of modules if the module doesn't already exist
         if (!exists(module.id)) {
             console.log('adding module: ', module.id);
