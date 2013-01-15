@@ -160,6 +160,8 @@ var modules = [];
             status: 'init'
         };
 
+        // trying to get my user name to work
+        // Add to list of modules if the module doesn't already exist
         if (!exists(module.id)) {
             modules.push(module);
         }
