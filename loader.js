@@ -1,17 +1,14 @@
 /*global window, document */
-var define = define || {};
-var modules = modules || [];
+var modules = [];
+/**
+ * Module lifecycle:
+ *  init - created, not executed - waiting on dependencies or a require
+ *  defined - executed
+ */
 (function (global) {
     'use strict';
 
-    //module properties
-    //id - id of the module - anon modules will be 'null'
-    //fn - callback that defines the module
-    //result - result of the callback that defines the module
-    //context - the context of the module
-    //status:
-    //  'wait' - module is waiting for its dependencies to be defined
-    //  'defined' - module has been defined and executed
+    var require, define;
 
     function isArray(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
@@ -21,18 +18,19 @@ var modules = modules || [];
         return Object.prototype.toString.call(obj) === '[object Function]';
     }
 
-    function isObject(obj) {
-        return Object.prototype.toString.call(obj) === '[object Object]';
+    function exists(id) {
+        var i;
+        if (id) {
+            for (i = 0; i < modules.length; i += 1) {
+                if (modules[i].id === id) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
-    //add a module
-    function add(module) {
-        modules.push(module);
-    }
-
-    //check if a module exists in the modules array - anon functions are not checked
-    //will return the module if found
-    //else will return undefined
+    //return a module with the specified id
     function get(id) {
         var i;
         if (id) {
@@ -44,61 +42,51 @@ var modules = modules || [];
         }
     }
 
-    function inject(id) {
-        var head = document.getElementsByTagName('head')[0],
-            script = document.createElement("script");
-
-        //so script must be executed before module is
-        script.async = true;
-        script.type = 'text/javascript';
-        script.src = id + ".js";
-
-        script.onerror = function (e) {
-            //may need to implement 404, timeout error
-        };
-
-        head.insertBefore(script, head.firstChild);
-    }
-
-    //check to see if module exists
-    function exists(id) {
-        var ret = false;
-        if (id) {
-            modules.forEach(function (mod) {
-                if (mod.id === id) {
-                    ret = true;
-                }
-            });
-        }
-        return ret;
-    }
-
     //returns an array of results for a set of module ids
-    //execute results if it hasn't already been calculated
     function getResults(ids) {
-        var module, result, results = [];
+        var module, results = [];
         ids.forEach(function (id) {
             module = get(id);
-            if (module && module.result === undefined) {
-                execute(module);
-            }
-
-            if (module) {
-                result = module.result;
-            } else {
-                result = undefined;
-            }
-
-            results.push(result);
+            results.push(module.result);
         });
         return results;
     }
 
-    //execute a module - usually only done with modules with no dependencies
-    function execute(module) {
-        if (module.status === 'wait') {
+    function check(depend) {
+        var i, module;
+        for (i = 0; i < depend.length; i += 1) {
+            module = get(depend[i]);
+            if (!module) {
+                return false;
+            }
+            if (module.status !== 'defined') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //check any modules that might need to be executed now that their dependencies have loaded
+    //remove required modules that have executed
+    function checkAll() {
+        var i, module;
+        for (i = 0; i < modules.length; i += 1) {
+            module = modules[i];
+            if (check(module) && module.status === 'init') {
+                loadModule(module);
+            }
+            if (module.require && check(module) && module.status === 'defined') {
+                modules.splice(i, 1);
+                i -= 1;
+            }
+        }
+    }
+
+    //execute a module (assumes all dependencies have been loaded)
+    function executeModule(module) {
+        if (module.status === 'init') {
             if (isFunction(module.callback)) {
-                module.result = module.callback.apply(module.context, getResults(module.depend));
+                module.result = module.callback.apply({}, getResults(module.depend));
             } else {
                 module.result = module.callback;
             }
@@ -106,19 +94,49 @@ var modules = modules || [];
         }
     }
 
-    //load dependencies - checking modules to see if there are results already
-    //if not, load a script tag
-    function load(depend) {
-        var module, i;
-        for (i = 0; i < depend.length; i += 1) {
-            module = get(depend[i]);
-            if (!module) {
-                inject(depend[i]);
+    function inject(id) {
+        var head, script;
+
+        head = document.getElementsByTagName('head')[0];
+        script = document.createElement("script");
+
+        script.async = true;
+        script.type = 'text/javascript';
+        script.src = id + ".js";
+        script.setAttribute('data-id', id);
+
+        script.onload = function (evt) {
+            var module = get(id);
+            loadModule(module);
+            checkAll();
+        };
+
+        head.insertBefore(script, head.firstChild);
+    }
+    //load a module and all its dependencies
+    function loadModule(module) {
+        var i, dep_module;
+        //load dependencies first
+        if (module.depend.length) {
+            for (i = 0; i < module.depend.length; i += 1) {
+                dep_module = get(module.depend[i]);
+                if (!dep_module) {
+                    //need to inject the thing
+                    inject(module.depend[i]);
+                } else {
+                    if (dep_module.status === 'defined') {
+                        break;
+                    }
+                    loadModule(dep_module);
+                }
             }
+        }
+        if (check(module.depend)) {
+            executeModule(module);
         }
     }
 
-    define = function (id, depend, callback) {
+    global.define = function (id, depend, callback) {
         var module;
 
         //check for anonymous module
@@ -138,46 +156,34 @@ var modules = modules || [];
         module = {
             id: id,
             depend: depend,
-            context: {},
-            status: 'wait',
-            callback: callback
+            callback: callback,
+            status: 'init'
         };
 
-        // Add to list of modules if the module doesn't already exist
         if (!exists(module.id)) {
-            console.log('adding module: ', module.id);
-            add(module);
-        }
-
-        //if no dependencies, execute
-        if (module.depend.length > 0) {
-            execute(module);
+            modules.push(module);
         }
     };
 
+    global.require = function (depend, callback) {
+        var i, req;
 
-    if (!global.req) {
-        global.req = function (depend, callback) {
-            var id = null, module;
-            //dependencies not provided
-            if (!isArray(depend)) {
-                callback = depend;
-                depend = [];
-            }
+        //dependencies not provided
+        if (!isArray(depend)) {
+            callback = depend;
+            depend = [];
+        }
 
-            //load dependencies into modules where appropriate
-            load(depend);
-
-            //apply this callback, loading results or 'exports' from dependency array
-            //callback.apply({}, getResults(depend));
+        req = {
+            callback: callback,
+            depend: depend,
+            require: true,
+            status: 'init'
         };
 
-        global.req.config = function (config) {
-        
-        };
-    }
+        modules.push(req);
 
-    //required for the spec
-    define.amd = {};
+        loadModule(req);
+    };
 
-}(window));
+}(this));

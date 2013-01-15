@@ -3,7 +3,7 @@
 
 <head>
     <title>Test Loader</title>
-    <script src="loader.js"></script>
+    <script src="loader3.js"></script>
     <script>
         //largely from Resig's js ninja book with customizations
         var results;
@@ -60,7 +60,7 @@
             });
 */
             test("Basic Require Tests", function () {
-                req(['a', 'b'], function (a, b) {
+                require(['a', 'b'], function (a, b) {
                     assert(a.name === 'a', 'a should equal');
                     assert(b.name === 'b', 'b should equal');
                     assert(b.cName === 'c', 'c should equal');
