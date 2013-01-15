@@ -24,6 +24,18 @@ var modules = [];
         return Object.prototype.toString.call(obj) === '[object Function]';
     }
 
+    //checks to see if an array of primitives is a set or not
+    function isSet(array) {
+        var i, compare;
+        while (array.length) {
+            compare = array.shift();
+            if (array.indexOf(compare) >= 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     function exists(id) {
         var i;
         if (id) {
@@ -114,18 +126,31 @@ var modules = [];
         script.setAttribute('data-id', id);
 
         script.onload = function (evt) {
-            //get id from evt
-            //find module and assign the id
-            var module = get(id);
+            var i,
+                module = get(id);
+
+            if (!module) {
+                //check for anon modules
+                for (i = 0; i < modules.length; i += 1) {
+                    if (modules[i].id === null) {
+                        //assume this is the module we are looking for
+                        modules[i].id = id;
+                    }
+                }
+                //try again
+                module = get(id);
+            }
             loadModule(module);
             checkAll();
         };
 
         head.insertBefore(script, head.firstChild);
     }
+
     //load a module and all its dependencies
     function loadModule(module) {
         var i, dep_module;
+
         //load dependencies first
         if (module.depend.length) {
             for (i = 0; i < module.depend.length; i += 1) {
@@ -136,8 +161,11 @@ var modules = [];
                 } else {
                     if (dep_module.status === 'defined') {
                         break;
+                    } else if (dep_module.status === 'init') {
+                        console.log('ERROR: circular reference!');
+                    } else {
+                        loadModule(dep_module);
                     }
-                    loadModule(dep_module);
                 }
             }
         }
