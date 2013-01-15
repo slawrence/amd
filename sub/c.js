@@ -4,4 +4,9 @@ define('sub/c', function () {
         name: 'c'
     };
 });
+
+require(['sub/asdf'], function (){
+    console.log('executing require');
+});
+
 console.log('importing c');

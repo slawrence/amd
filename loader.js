@@ -8,7 +8,13 @@ var modules = [];
 (function (global) {
     'use strict';
 
-    var require, define;
+    if (typeof require !== 'undefined') {
+        return;
+    }
+
+    if (typeof define !== 'undefined') {
+        return;
+    }
 
     function isArray(obj) {
         return Object.prototype.toString.call(obj) === '[object Array]';
@@ -40,6 +46,7 @@ var modules = [];
                 }
             }
         }
+        return false;
     }
 
     //returns an array of results for a set of module ids
@@ -52,6 +59,7 @@ var modules = [];
         return results;
     }
 
+    // checks modules to see if all dependencies have been loaded
     function check(depend) {
         var i, module;
         for (i = 0; i < depend.length; i += 1) {
@@ -69,13 +77,13 @@ var modules = [];
     //check any modules that might need to be executed now that their dependencies have loaded
     //remove required modules that have executed
     function checkAll() {
-        var i, module;
+        var i;
         for (i = 0; i < modules.length; i += 1) {
-            module = modules[i];
-            if (check(module) && module.status === 'init') {
-                loadModule(module);
+            if (check(modules[i].depend) && modules[i].status === 'init') {
+                executeModule(modules[i]);
+                checkAll(); //got to check again because a status has changed
             }
-            if (module.require && check(module) && module.status === 'defined') {
+            if (modules[i].required && check(modules[i]) && modules[i].status === 'defined') {
                 modules.splice(i, 1);
                 i -= 1;
             }
@@ -106,6 +114,8 @@ var modules = [];
         script.setAttribute('data-id', id);
 
         script.onload = function (evt) {
+            //get id from evt
+            //find module and assign the id
             var module = get(id);
             loadModule(module);
             checkAll();
@@ -160,12 +170,14 @@ var modules = [];
             status: 'init'
         };
 
-        // trying to get my user name to work
         // Add to list of modules if the module doesn't already exist
         if (!exists(module.id)) {
             modules.push(module);
         }
     };
+
+    //required via AMD spec
+    global.define.amd = {};
 
     global.require = function (depend, callback) {
         var i, req;
@@ -179,7 +191,7 @@ var modules = [];
         req = {
             callback: callback,
             depend: depend,
-            require: true,
+            required: true,
             status: 'init'
         };
 
