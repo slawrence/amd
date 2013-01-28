@@ -1,5 +1,4 @@
 /*global window, document */
-var modules = [];
 /**
  * Module lifecycle:
  *  init - created, not executed - waiting on dependencies or a require
@@ -7,6 +6,8 @@ var modules = [];
  */
 (function (global) {
     'use strict';
+
+    var modules = [];
 
     if (typeof require !== 'undefined') {
         return;
@@ -161,8 +162,6 @@ var modules = [];
                 } else {
                     if (dep_module.status === 'defined') {
                         break;
-                    } else if (dep_module.status === 'init') {
-                        console.log('ERROR: circular reference!');
                     } else {
                         loadModule(dep_module);
                     }

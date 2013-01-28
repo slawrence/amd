@@ -25,40 +25,33 @@
         };
 
         window.onload = function () {
-/*
             test("Exists test", function () {
-                assert(req, "req global exists");
+                assert(require, "require global exists");
                 assert(define, "define global exists");
                 assert(define.amd, "define.amd exists");
             });
 
             test("Define a module with no dependencies", function () {
                 define("module", function () {
-                    console.log('executing module ...');
                     return {};
                 });
             });
 
-            test("Define an object module with no dependencies", function () {
+            test("Define some dependent objects", function () {
                 define("testModule", {
                     test: 'test string'
                 });
-            });
-
-            test("Define some dependent objects", function () {
                 define("some", ["testModule"], function (testModule) {
-                    console.log('executing some', testModule);
                     return { hola: 'hola' };
                 });
-                define("nofriends", ["some"], function (testModule) {
-                    console.log('executing nofriends', testModule);
+                define("nofriends", ["some"], function (some) {
+                    return some;
+                });
+                require(["nofriends"], function (nofriends) {
+                    assert(nofriends.hola === 'hola', 'should be proper hola object');
                 });
             });
 
-            test("Define anonymous module", function () {
-                define(function() { console.log('executing anonymous module')});
-            });
-*/
             test("Basic Require Tests", function () {
                 require(['a', 'b'], function (a, b) {
                     assert(a.name === 'a', 'a should equal');
@@ -66,6 +59,7 @@
                     assert(b.cName === 'c', 'c should equal');
                 });
             });
+
         }
 
     </script>
